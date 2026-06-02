@@ -1,6 +1,24 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
+import { readFileSync, existsSync } from "node:fs";
+import { join } from "node:path";
 
-const OLLAMA_CLOUD_API_KEY = "c29bf8b9ec3d4a8db1899de2240506a1.rJjU-psTI6aeopLLdOLJbG1U";
+function getOllamaCloudKey(): string {
+  // 1. Environment variable
+  const env = process.env.OLLAMA_CLOUD_API_KEY;
+  if (env) return env;
+  // 2. auth.json
+  const agentDir = process.env.PI_CODING_AGENT_DIR || join(process.env.USERPROFILE || process.env.HOME || ".", ".pi/agent");
+  const authPath = join(agentDir, "auth.json");
+  if (existsSync(authPath)) {
+    try {
+      const auth = JSON.parse(readFileSync(authPath, "utf-8"));
+      if (auth["ollama-cloud"]?.key) return auth["ollama-cloud"].key;
+    } catch { /* ignore */ }
+  }
+  throw new Error("Ollama Cloud API key not found. Set OLLAMA_CLOUD_API_KEY env or add 'ollama-cloud' to ~/.pi/agent/auth.json");
+}
+
+const OLLAMA_CLOUD_API_KEY = getOllamaCloudKey();
 
 export default async function (pi: ExtensionAPI) {
   // Fetch available models from Ollama Cloud with full details
