@@ -1,11 +1,8 @@
 import type { ExtensionAPI } from "@earendil-works/pi-coding-agent";
-import type { OAuthCredentials, OAuthLoginCallbacks } from "@earendil-works/pi-ai";
 
 export default async function (pi: ExtensionAPI) {
-  // Resolve API key: env var > auth.json > prompt via /login
+  // Resolve API key: env var > auth.json
   let apiKey = process.env.OLLAMA_CLOUD_API_KEY || "";
-
-  // If no key, try auth.json manually (pi will also check, but we need it for model discovery)
   if (!apiKey) {
     try {
       const fs = await import("node:fs");
@@ -19,7 +16,7 @@ export default async function (pi: ExtensionAPI) {
     } catch { /* ignore */ }
   }
 
-  // Fetch models if we have a key; otherwise register with empty list (models fetched on login)
+  // Fetch models if we have a key; otherwise register with empty list
   let detailedModels: any[] = [];
   if (apiKey) {
     try {
@@ -79,26 +76,5 @@ export default async function (pi: ExtensionAPI) {
     apiKey: "$OLLAMA_CLOUD_API_KEY",
     api: "openai-completions",
     models: detailedModels,
-    oauth: {
-      name: "Ollama Cloud",
-      async login(callbacks: OAuthLoginCallbacks): Promise<OAuthCredentials> {
-        const key = await callbacks.onPrompt({
-          message: "Enter your Ollama Cloud API key (from https://ollama.com):",
-        });
-        if (!key?.trim()) throw new Error("API key is required");
-        return {
-          refresh: key.trim(),
-          access: key.trim(),
-          expires: Date.now() + 365 * 24 * 60 * 60 * 1000, // 1 year (key doesn't expire)
-        };
-      },
-      async refreshToken(credentials: OAuthCredentials): Promise<OAuthCredentials> {
-        // API keys don't expire — just return as-is
-        return credentials;
-      },
-      getApiKey(credentials: OAuthCredentials): string {
-        return credentials.access;
-      },
-    },
   });
 }
