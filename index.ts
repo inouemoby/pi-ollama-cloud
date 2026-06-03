@@ -16,7 +16,17 @@ export default async function (pi: ExtensionAPI) {
     } catch { /* ignore */ }
   }
 
-  // Fetch models if we have a key; otherwise register with empty list
+  // Placeholder model — ensures the provider appears in /login even without a key
+  const placeholderModel = {
+    id: "login-required",
+    name: "Login required — use /login to add your API key",
+    reasoning: false,
+    input: ["text"] as ("text" | "image")[],
+    cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+    contextWindow: 1,
+    maxTokens: 1,
+  };
+
   let detailedModels: any[] = [];
   if (apiKey) {
     try {
@@ -67,7 +77,7 @@ export default async function (pi: ExtensionAPI) {
           }
         })
       );
-    } catch { /* no key or network error — register with empty models */ }
+    } catch { /* network error — fall through to placeholder */ }
   }
 
   pi.registerProvider("ollama-cloud", {
@@ -75,6 +85,6 @@ export default async function (pi: ExtensionAPI) {
     baseUrl: "https://ollama.com/v1",
     apiKey: "$OLLAMA_CLOUD_API_KEY",
     api: "openai-completions",
-    models: detailedModels,
+    models: detailedModels.length > 0 ? detailedModels : [placeholderModel],
   });
 }
