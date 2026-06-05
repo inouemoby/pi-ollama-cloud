@@ -2,11 +2,12 @@
   "name": "pi-ollama-cloud",
   "version": "1.0.0",
   "description": "Register Ollama Cloud as a provider for pi coding agent. Auto-fetches available models including minimax-m3, deepseek-v4, qwen3, glm-5, etc.",
-  "keywords": ["pi-package"],
+  "keywords": [
+    "pi-package"
+  ],
   "pi": {
-    "extensions": ["./index.ts"]
-  },
-  "peerDependencies": {
-    "@earendil-works/pi-coding-agent": "*"
+    "extensions": [
+      "./index.ts"
+    ]
   }
 }
