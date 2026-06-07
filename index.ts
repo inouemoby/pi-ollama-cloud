@@ -27,7 +27,8 @@ export default async function (pi: ExtensionAPI) {
     maxTokens: 1,
   };
 
-  let detailedModels: any[] = [];
+  // ─── Cloud models ──────────────────────────────
+  let cloudModels: any[] = [];
   if (apiKey) {
     try {
       const modelsResp = await fetch("https://ollama.com/v1/models", {
@@ -35,7 +36,7 @@ export default async function (pi: ExtensionAPI) {
       });
       const modelsPayload = (await modelsResp.json()) as { data: Array<{ id: string }> };
 
-      detailedModels = await Promise.all(
+      cloudModels = await Promise.all(
         modelsPayload.data.map(async (m) => {
           try {
             const showResp = await fetch("https://ollama.com/api/show", {
@@ -77,7 +78,7 @@ export default async function (pi: ExtensionAPI) {
           }
         })
       );
-    } catch { /* network error — fall through to placeholder */ }
+    } catch { /* network error — fall through */ }
   }
 
   pi.registerProvider("ollama-cloud", {
@@ -85,6 +86,34 @@ export default async function (pi: ExtensionAPI) {
     baseUrl: "https://ollama.com/v1",
     apiKey: "$OLLAMA_CLOUD_API_KEY",
     api: "openai-completions",
-    models: detailedModels.length > 0 ? detailedModels : [placeholderModel],
+    models: cloudModels.length > 0 ? cloudModels : [placeholderModel],
   });
+
+  // ─── Local Ollama ──────────────────────────────
+  try {
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 3000);
+    const localResp = await fetch("http://localhost:11434/api/tags", {
+      signal: controller.signal,
+    });
+    clearTimeout(timeout);
+    const localPayload = (await localResp.json()) as { models: Array<{ name: string }> };
+
+    if (localPayload.models && localPayload.models.length > 0) {
+      pi.registerProvider("ollama", {
+        name: "Ollama (local)",
+        baseUrl: "http://localhost:11434/v1",
+        api: "openai-completions",
+        models: localPayload.models.map((m) => ({
+          id: m.name,
+          name: m.name,
+          reasoning: false,
+          input: ["text"] as ("text" | "image")[],
+          cost: { input: 0, output: 0, cacheRead: 0, cacheWrite: 0 },
+          contextWindow: 128000,
+          maxTokens: 16384,
+        })),
+      });
+    }
+  } catch { /* no local Ollama — skip silently */ }
 }
